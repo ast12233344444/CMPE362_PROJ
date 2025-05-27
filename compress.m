@@ -63,13 +63,12 @@ function rle = run_length_encode(input)
     rle = [symbols counts];  % Each row is a "tuple": [value, count]
 end
 
-function compressed_data = compress_data(images, quantization_matrix, GOP_size)
+function [compressed_data, layer_sizes, frame_to_block, block_size] = compress_data(images, quantization_matrix, GOP_size)
     
     
     mblocks = []
     %convert images to blocks
     for k = 1:length(images)
-            
         if mod(k-1, GOP_size) == 0 
             image = int32(images{k});
             blocks = frame_to_mb(image);
@@ -119,11 +118,12 @@ function compressed_data = compress_data(images, quantization_matrix, GOP_size)
         mblocks{k} = mblock;
     end
     
-    
-    compressed_data = {}
+    Rlayer_cell = {}
+    Glayer_cell = {}
+    Blayer_cell = {}
+    disp("size for mblock:"+ size(mblock));
     for k = 1:length(images)
         mblock = mblocks{k};
-        zigzagged_block = []
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
                 block = int8(mblock{i,j});
@@ -136,18 +136,27 @@ function compressed_data = compress_data(images, quantization_matrix, GOP_size)
                 Rrle = run_length_encode(Rzb);
                 Grle = run_length_encode(Gzb);
                 Brle = run_length_encode(Bzb);
-                maxLength = max([size(Rrle,1), size(Grle,1), size(Brle,1)]);
 
-                Rpad = [Rrle; zeros(maxLength - size(Rrle,1), 2)];
-                Gpad = [Grle; zeros(maxLength - size(Grle, 1), 2)];
-                Bpad = [Brle; zeros(maxLength - size(Brle, 1), 2)];
-
-                zb = cat(3, Rpad, Gpad, Bpad);
-                zigzagged_block = [zigzagged_block; zb];
+                
+                Rlayer_cell{end+1} = Rrle;
+                Glayer_cell{end+1} = Grle;
+                Blayer_cell{end+1} = Brle;
             end
         end
-        compressed_data{end+1} = zigzagged_block;
     end
+    Rlayer = vertcat(Rlayer_cell{:});
+    Glayer = vertcat(Glayer_cell{:});
+    Blayer = vertcat(Blayer_cell{:});
+
+    Rlayer_size = size(Rlayer, 1)
+    Glayer_size = size(Glayer, 1)
+    Blayer_size = size(Blayer, 1)
+
+    compressed_data = [ Rlayer; Glayer; Blayer];
+    layer_sizes = [Rlayer_size, Glayer_size, Blayer_size];
+    [brows, bcols] = size(mblocks{1});
+    frame_to_block = [length(images), brows, bcols];
+    block_size = [8, 8];
 end
 
 % Sort filenames alphabetically
@@ -167,13 +176,17 @@ for k = 1:length(files)
     fprintf('Read image: %s\n', filename);
 end
 
-zigzagged_blocks = compress_data(images, quantization_matrix, GOP_size);
+[zigzagged_blocks, layer_sizes, frame_to_blocks, block_sizes] = compress_data(images, quantization_matrix, GOP_size);
+[rows, cols] = size(zigzagged_blocks);
 fid = fopen('result.bin', 'w');
-bytes = getByteStreamFromArray(zigzagged_blocks);
-fwrite(fid, bytes, 'uint8');
+fwrite(fid, [rows, cols], 'int32');  % Write size as header
+fwrite(fid, frame_to_blocks, 'int32');
+fwrite(fid, block_sizes, 'int32');
+fwrite(fid, layer_sizes, 'int32');
+fwrite(fid, zigzagged_blocks, 'int8');
 fclose(fid);
 
-numBytes = numel(bytes);
+numBytes = numel(zigzagged_blocks);
 
 uncompressed_size = 480 * 360 * 3 * 120;
 

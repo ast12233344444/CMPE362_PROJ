@@ -1,12 +1,12 @@
-%load("-mat", "result.bin", "zigzagged_blocks")
-
-
 fid = fopen('result.bin', 'r');
-bytes = fread(fid, '*uint8');
+dims = fread(fid, 2, 'int32')    % Read dimensions
+frames_to_blocks = fread(fid, 3, 'int32');
+block_sizes = fread(fid, 2, 'int32');
+lsizes = fread(fid, 3, 'int32')
+zigzagged_blocks = fread(fid, 'int8');
+zigzagged_blocks = reshape(zigzagged_blocks, dims');  % Reshape to original
 fclose(fid);
-
-zigzagged_blocks = getArrayFromByteStream(bytes);
-
+head = zigzagged_blocks(1:10, :)
 
 quantization_matrix = [
  16 , 11 , 10 , 16 , 24 , 40 , 51 , 61;
@@ -72,22 +72,35 @@ function output = inverse_zigzag(input)
     end
 end
 
-function images = decompress_compressed_data(compressed_data, quantization_matrix, GOP_size)
+function images = decompress_compressed_data(compressed_data, layer_sizes, frames_to_blocks, block_sizes, quantization_matrix, GOP_size)
+    Rsize = layer_sizes(1)
+    Gsize = layer_sizes(2)
+    Bsize = layer_sizes(3)
+    Rlayer = compressed_data(1:Rsize, :);
+    Glayer = compressed_data(Rsize+1:Rsize+Gsize, :);
+    Blayer = compressed_data(Rsize+Gsize+1:Rsize+Gsize+Bsize, :);
+
+    Rlayer = run_length_decode(Rlayer);
+    Glayer = run_length_decode(Glayer);
+    Blayer = run_length_decode(Blayer);
+
+    rs= size(Rlayer)
+    gs= size(Glayer)
+    bs= size(Blayer)
+
     mblocks = []
-    for k=1:length(compressed_data)
-        zigzagged_block = compressed_data{k};
+    for k = 1:frames_to_blocks(1)
         mblock = [];
-        for i = 1:size(zigzagged_block, 1)
-            for j = 1:size(zigzagged_block, 2)
-                rled_data = zigzagged_block{i, j};
-                Rrle = rled_data(:, :, 1);
-                Grle = rled_data(:, :, 2);
-                Brle = rled_data(:, :, 3);
-    
-                Rzb = run_length_decode(Rrle);
-                Gzb = run_length_decode(Grle);
-                Bzb = run_length_decode(Brle);
-    
+        for i = 1:frames_to_blocks(2)
+            for j = 1:frames_to_blocks(3)
+                block_no = (k-1) * frames_to_blocks(2) * frames_to_blocks(3) + (i-1) * frames_to_blocks(3) + (j-1);
+                block_start = block_no * block_sizes(1) * block_sizes(2) + 1;
+                block_end = (block_no + 1) * block_sizes(1) * block_sizes(2);
+
+                Rzb = Rlayer(block_start:block_end);
+                Gzb = Glayer(block_start:block_end);
+                Bzb = Blayer(block_start:block_end);
+
                 R = inverse_zigzag(Rzb);
                 G = inverse_zigzag(Gzb);
                 B = inverse_zigzag(Bzb);
@@ -153,7 +166,7 @@ function images = decompress_compressed_data(compressed_data, quantization_matri
 end
 
 
-images = decompress_compressed_data(zigzagged_blocks, quantization_matrix, GOP_size)
+images = decompress_compressed_data(zigzagged_blocks, lsizes, frames_to_blocks, block_sizes, quantization_matrix, GOP_size)
 output_folder = 'decomp_test';  % folder to save images
 
 % Create the output folder if it doesn't exist
