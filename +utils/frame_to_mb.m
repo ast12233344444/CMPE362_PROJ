@@ -1,8 +1,8 @@
-% Given a frame (H, W, c)
+% Given a frame (H, W, 3)
 % Convert it into macroblock representation
 % returns a structure cell{mb_i, mb_j} = arr(8, 8, 3)
 function mb_cells = frame_to_mb(frame)
-    [H, W, c] = size(frame);
+    [H, W, ~] = size(frame);
     mb_h = H / 8;
     mb_w = W / 8;
     mb_cells = cell(mb_h, mb_w);
