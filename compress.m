@@ -28,26 +28,14 @@ for k = 1:length(files)
     file = fullfile("./video_data", filename);
     img = imread(file);
 
-    images{end+1} = img;
-    original_size = original_size +prod(size(img));
+    images{k} = img;
+    original_size = original_size + numel(img);
 end
 
-[zigzagged_blocks, layer_sizes, frame_to_blocks, block_sizes] = basic_compression.compress(images, quantization_matrix, GOP_size);
-fid = fopen('result.bin', 'w');
-
-compressed_size = 0;
-compressed_size = compressed_size + fwrite(fid, GOP_size, 'int32');
-compressed_size = compressed_size + fwrite(fid, size(quantization_matrix), 'int32');
-compressed_size = compressed_size + fwrite(fid, quantization_matrix(:), 'uint8');
-
-compressed_size = compressed_size + fwrite(fid, frame_to_blocks, 'int32');
-compressed_size = compressed_size + fwrite(fid, block_sizes, 'int32');
-compressed_size = compressed_size + fwrite(fid, layer_sizes, 'int32');
-
-compressed_size = compressed_size + fwrite(fid, size(zigzagged_blocks), 'int32');
-compressed_size = compressed_size + fwrite(fid, zigzagged_blocks, 'int8');
-fclose(fid);
-
+tic;
+compressed_data = basic_compression.compress(images, quantization_matrix, GOP_size,true);
+compressed_size = basic_compression.dump('result.bin',compressed_data);
 comp_ratio = double(original_size) / double(compressed_size);
+elapsed_time = toc;
 
-fprintf('compression ratio: %f\n', comp_ratio);
+fprintf('GOP_size: %d, Compression Ratio: %f, Elapsed: %f seconds\n', GOP_size,comp_ratio, elapsed_time);

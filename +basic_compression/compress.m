@@ -1,10 +1,59 @@
-function [compressed_data, layer_sizes, frame_to_block, block_size] = compress(images, quantization_matrix, GOP_size)
+% Compresses a sequence of images using DCT, quantization, and encoding.
+%
+%   This function compresses a sequence of images by converting them into macroblocks,
+%   applying the Discrete Cosine Transform (DCT), quantizing the transformed blocks,
+%   and encoding the quantized blocks using zigzag and run-length encoding.
+%
+%   Input:
+%       images              - A cell array of images to be compressed. (L * H * W * 3)
+%       quantization_matrix - A matrix used for quantizing DCT coefficients. (8x8 matrix).
+%       GOP_size            - Size of the Group of Pictures (GOP) for compression. (integer).
+%       verbose             - A boolean flag to enable verbose output (optional).
+%
+%   Output:
+%       compressed_data - A structure containing the following fields:
+%           header:
+%               GOP_size            - Size of the Group of Pictures (GOP).
+%               quantization_matrix - Quantization matrix used during compression.
+%               num_images          - Number of images in the compressed data.
+%               image_size          - A vector [height, width, num_layers] specifying
+%                                      the dimensions of the images.
+%               layer_sizes         - Sizes of individual layers (R, G, B).
+%           data:
+%               A matrix containing the compressed image data.
+function [compressed_data] = compress(images, quantization_matrix, GOP_size,verbose)
+    if nargin < 4
+        verbose = false; % Default to false if not provided
+    end
+
     mblocks = [];
     num_images = length(images);
 
-    h1 = waitbar(0, 'Converting images to blocks...');
+    mblocks = convert_imgs_to_mbs(num_images,GOP_size,images,mblocks,verbose);
+    mblocks = apply_dct_to_mblocks(num_images,mblocks,verbose);
+    mblocks = quantize_mblocks(num_images,mblocks,quantization_matrix,verbose);
+
+    [Rlayer,Glayer,Blayer] = zigzag_rle_encode(num_images,mblocks,verbose);
+
+    compressed_data =  struct(...
+        "header", struct('GOP_size', GOP_size, ...
+                         'quantization_matrix', quantization_matrix, ...
+                         'num_images', num_images, ...
+                         'image_size', size(images{1}), ...
+                         'layer_sizes', [size(Rlayer, 1), size(Glayer, 1), size(Blayer, 1)] ...
+                     ), ...
+        "data", [Rlayer; Glayer; Blayer]);
+
+end
+
+function mblocks = convert_imgs_to_mbs(num_images,GOP_size,images,mblocks, verbose)
+    if verbose
+        h1 = waitbar(0, 'Converting images to blocks...');
+    end
     for k = 1:num_images
-        waitbar(k / num_images, h1);
+        if verbose
+            waitbar(k / num_images, h1);
+        end
         if mod(k-1, GOP_size) == 0 
             image = int32(images{k});
             blocks = utils.frame_to_mb(image);
@@ -17,11 +66,21 @@ function [compressed_data, layer_sizes, frame_to_block, block_size] = compress(i
             mblocks{end+1} = blocks;
         end
     end
-    close(h1);
+    if verbose
+        close(h1);
+    end
+end
 
-    h2 = waitbar(0, 'Applying DCT to blocks...');
+
+
+function mblocks = apply_dct_to_mblocks(num_images,mblocks, verbose)
+    if verbose
+        h2 = waitbar(0, 'Applying DCT to blocks...');
+    end
     for k = 1:num_images
-        waitbar(k / num_images, h2);
+        if verbose
+            waitbar(k / num_images, h2);
+        end
         mblock = mblocks{k}; 
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
@@ -34,11 +93,20 @@ function [compressed_data, layer_sizes, frame_to_block, block_size] = compress(i
         end
         mblocks{k} = mblock;
     end
-    close(h2);
+    if verbose
+        close(h2);
+    end
+end
 
-    h3 = waitbar(0, 'Quantizing blocks...');
+
+function mblocks = quantize_mblocks(num_images,mblocks,quantization_matrix, verbose)  
+    if verbose
+        h3 = waitbar(0, 'Quantizing blocks...');
+    end
     for k = 1:num_images
-        waitbar(k / num_images, h3);
+        if verbose
+            waitbar(k / num_images, h3);
+        end
         mblock = mblocks{k};
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
@@ -54,15 +122,24 @@ function [compressed_data, layer_sizes, frame_to_block, block_size] = compress(i
         end
         mblocks{k} = mblock;
     end
-    close(h3);
+    if verbose
+        close(h3);
+    end
+end
 
+
+function [Rlayer,Glayer,Blayer] = zigzag_rle_encode(num_images,mblocks, verbose)
     Rlayer_cell = {};
     Glayer_cell = {};
     Blayer_cell = {};
-
-    h4 = waitbar(0, 'Performing zigzag and run-length encoding...');
+    
+    if verbose
+        h4 = waitbar(0, 'Performing zigzag and run-length encoding...');
+    end
     for k = 1:num_images
-        waitbar(k / num_images, h4);
+        if verbose
+            waitbar(k / num_images, h4);
+        end
         mblock = mblocks{k};
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
@@ -76,26 +153,17 @@ function [compressed_data, layer_sizes, frame_to_block, block_size] = compress(i
                 Rrle = utils.run_length_encode(Rzb);
                 Grle = utils.run_length_encode(Gzb);
                 Brle = utils.run_length_encode(Bzb);
-
+    
                 Rlayer_cell{end+1} = Rrle;
                 Glayer_cell{end+1} = Grle;
                 Blayer_cell{end+1} = Brle;
             end
         end
     end
-    close(h4);
-
     Rlayer = vertcat(Rlayer_cell{:});
     Glayer = vertcat(Glayer_cell{:});
     Blayer = vertcat(Blayer_cell{:});
-
-    Rlayer_size = size(Rlayer, 1);
-    Glayer_size = size(Glayer, 1);
-    Blayer_size = size(Blayer, 1);
-
-    compressed_data = [Rlayer; Glayer; Blayer];
-    layer_sizes = [Rlayer_size, Glayer_size, Blayer_size];
-    [brows, bcols] = size(mblocks{1});
-    frame_to_block = [num_images, brows, bcols];
-    block_size = [8, 8];
+    if verbose
+        close(h4);
+    end
 end

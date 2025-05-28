@@ -1,10 +1,45 @@
-function images = decompress(compressed_data, layer_sizes, frames_to_blocks, block_sizes, quantization_matrix, GOP_size)
-    Rsize = layer_sizes(1);
-    Gsize = layer_sizes(2);
-    Bsize = layer_sizes(3);
-    Rlayer = compressed_data(1:Rsize, :);
-    Glayer = compressed_data(Rsize+1:Rsize+Gsize, :);
-    Blayer = compressed_data(Rsize+Gsize+1:Rsize+Gsize+Bsize, :);
+% Decompresses image data from a compressed format.
+%   This function takes a compressed data structure and reconstructs the
+%   individual image layers (R, G, B) based on the header information and
+%   data provided in the input structure.
+%
+%   Input:
+%       compressed_data - A structure containing the following fields:
+%           header:
+%               GOP_size            - Size of the Group of Pictures (GOP).
+%               quantization_matrix - Quantization matrix used during compression.
+%               num_images          - Number of images in the compressed data.
+%               image_size          - A vector [height, width, num_layers] specifying
+%                                      the dimensions of the images.
+%               layer_sizes         - Sizes of individual layers (R, G, B).
+%           data:
+%               A matrix containing the compressed image data.
+%
+%   Output:
+%       images - A reconstructed image matrix containing the decompressed
+%                image data.
+%   Notes:
+%       - The function assumes that the input structure is correctly formatted
+%         and contains all necessary fields.
+%       - The quantization matrix is converted to double precision for processing.
+function images = decompress(compressed_data)
+    Rsize = compressed_data.header.layer_sizes(1);
+    Gsize = compressed_data.header.layer_sizes(2);
+    Bsize = compressed_data.header.layer_sizes(3);
+    Rlayer = compressed_data.data(1:Rsize, :);
+    Glayer = compressed_data.data(Rsize+1:Rsize+Gsize, :);
+    Blayer = compressed_data.data(Rsize+Gsize+1:Rsize+Gsize+Bsize, :);
+
+    quantization_matrix = double(compressed_data.header.quantization_matrix);
+    GOP_size = compressed_data.header.GOP_size;
+
+    num_images = compressed_data.header.num_images;
+    image_size = compressed_data.header.image_size;
+
+    qsize = size(quantization_matrix);
+
+    frames_to_blocks = [num_images, image_size(1)/qsize(1), image_size(2)/qsize(2)];
+    block_sizes = [qsize(1), qsize(2)];
 
     h1 = waitbar(0, 'Decoding run-length encoded data...');
     Rlayer = utils.run_length_decode(Rlayer);
