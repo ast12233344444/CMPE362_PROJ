@@ -1,0 +1,26 @@
+function compressed_data = load(fname)
+    fid = fopen(fname, 'r');
+    
+    % Read header information
+    GOP_size = fread(fid, 1, 'int32');
+    qsize = fread(fid, 2, 'int32');
+    quantization_matrix = int32(reshape(fread(fid, prod(qsize), 'uint8'), qsize'));
+    
+    num_images = fread(fid, 1, 'int32');
+    image_size = fread(fid, 3, 'int32');
+    layer_sizes = fread(fid, image_size(3), 'int32');
+
+    data_size = fread(fid, 2, 'int32');
+    data = fread(fid,prod(data_size), 'int8');
+
+    compressed_data =  struct(...
+        "header", struct('GOP_size', GOP_size, ...
+                         'quantization_matrix', quantization_matrix, ...
+                         'num_images', num_images, ...
+                         'image_size', image_size, ...
+                         'layer_sizes', layer_sizes ...
+                     ), ...
+        "data", reshape(data, data_size') ...
+    );
+    fclose(fid);
+end
