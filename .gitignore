@@ -1,0 +1,5 @@
+*.asv
+*.png
+*.bin
+.DS_Store
+video_data
