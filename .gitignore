@@ -1,6 +1,7 @@
 *.asv
 *.png
 *.bin
+!assets/*.png
 .DS_Store
 video_data
 decompressed
