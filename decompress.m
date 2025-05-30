@@ -1,3 +1,5 @@
+set(0, 'DefaultFigureRenderer', 'painters')
+
 fid = fopen('result.bin', 'r');
 
 compressed_data = basic_compression.load('result.bin');

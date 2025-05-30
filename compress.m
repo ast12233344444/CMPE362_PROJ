@@ -1,3 +1,5 @@
+set(0, 'DefaultFigureRenderer', 'painters')
+
 file = fullfile("./video_data", "*.jpg");
 files = dir(file);
 
