@@ -1,7 +1,9 @@
 *.asv
+*.zip
 *.png
 *.bin
 !assets/*.png
 .DS_Store
 video_data
 decompressed
+trash
