@@ -30,7 +30,10 @@ end
 GOP_sizes = [1, 15, 30];
 psnr_results = cell(1, length(GOP_sizes));
 
-for g = 1:length(GOP_sizes)
+avg_time = 25; % educated guess
+fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)));
+for g = 1:length(GOP_sizes)  
+    tic;
     GOP_size = GOP_sizes(g);
     
     % Compress and decompress images
@@ -49,10 +52,12 @@ for g = 1:length(GOP_sizes)
     
     psnr_results{g} = psnr_values;
 
+    elapsed_time = toc;
     avg_time = (avg_time*(GOP_size-1) + elapsed_time)/GOP_size;
     
+    
     fprintf('Time for GOP_size %d: %f seconds\n', GOP_size, elapsed_time);
-    fprintf('Estimated time left: %f mins\n', avg_time*(length(GOP_sizes)-g)/60);
+    fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)-g));
 end
 
 % Plot PSNR curves
@@ -67,7 +72,7 @@ hold off;
 xlabel('Frame Number');
 ylabel('PSNR (dB)');
 title('PSNR Curves for Different GOP Sizes');
-legend('show');
+legend('show', 'location','best');
 grid on;
 
 saveas(gcf, "assets/psnr_analysis.png")
