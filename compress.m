@@ -14,7 +14,7 @@ quantization_matrix = [
  72 , 92 , 95 , 98 , 112 , 100 , 103 , 99;
 ];
 
-GOP_size = 15;
+GOP_size = 30;
 
 
 %Sort filenames alphabetically
@@ -28,7 +28,7 @@ original_size = 0;
 for k = 1:length(files)
     filename = files(k).name;
     file = fullfile("./video_data", filename);
-    img = imread(file);
+    img = double(imread(file));
 
     images{k} = img;
     original_size = original_size + numel(img);

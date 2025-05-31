@@ -23,63 +23,45 @@
 %         and contains all necessary fields.
 %       - The quantization matrix is converted to double precision for processing.
 function images = decompress(compressed_data)
-    Rsize = compressed_data.header.layer_sizes(1);
-    Gsize = compressed_data.header.layer_sizes(2);
-    Bsize = compressed_data.header.layer_sizes(3);
-    Rlayer = compressed_data.data(1:Rsize, :);
-    Glayer = compressed_data.data(Rsize+1:Rsize+Gsize, :);
-    Blayer = compressed_data.data(Rsize+Gsize+1:Rsize+Gsize+Bsize, :);
 
     quantization_matrix = double(compressed_data.header.quantization_matrix);
     GOP_size = compressed_data.header.GOP_size;
 
-    num_images = compressed_data.header.num_images;
-    image_size = compressed_data.header.image_size;
+    mblocks = utils.zigzag_rle_decode(compressed_data);
 
-    qsize = size(quantization_matrix);
+    mblocks = dequantize_mblocks(mblocks,quantization_matrix);
 
-    frames_to_blocks = [num_images, image_size(1)/qsize(1), image_size(2)/qsize(2)];
-    block_sizes = [qsize(1), qsize(2)];
+    mblocks = apply_idct_to_mblocks(mblocks);
 
-    h1 = waitbar(0, 'Decoding run-length encoded data...');
-    Rlayer = utils.run_length_decode(Rlayer);
-    waitbar(1/3, h1);
-    Glayer = utils.run_length_decode(Glayer);
-    waitbar(2/3, h1);
-    Blayer = utils.run_length_decode(Blayer);
-    waitbar(1, h1);
-    close(h1);
+    images = [];
+    num_images = length(mblocks);
 
-    mblocks = [];
-    num_blocks = frames_to_blocks(1);
-
-    % Progress bar for inverse zigzag and block reconstruction
-    h2 = waitbar(0, 'Reconstructing blocks from compressed data...');
-    for k = 1:num_blocks
-        waitbar(k / num_blocks, h2);
-        mblock = [];
-        for i = 1:frames_to_blocks(2)
-            for j = 1:frames_to_blocks(3)
-                block_no = (k-1) * frames_to_blocks(2) * frames_to_blocks(3) + (i-1) * frames_to_blocks(3) + (j-1);
-                block_start = block_no * block_sizes(1) * block_sizes(2) + 1;
-                block_end = (block_no + 1) * block_sizes(1) * block_sizes(2);
-
-                Rzb = Rlayer(block_start:block_end);
-                Gzb = Glayer(block_start:block_end);
-                Bzb = Blayer(block_start:block_end);
-
-                R = utils.inverse_zigzag(Rzb);
-                G = utils.inverse_zigzag(Gzb);
-                B = utils.inverse_zigzag(Bzb);
-
-                mblock{i, j} = double(cat(3, R, G, B));
-            end
+    h5 = waitbar(0, 'Reconstructing images...');
+    for k = 1:num_images
+        waitbar(k / num_images, h5);
+        if mod(k-1, GOP_size) == 0
+            mblock = mblocks{k};
+            image = utils.mb_to_frame(mblock);
+            images{end+1} = image;
+        else
+            mblock = mblocks{k};
+            image_prev = images{k-1};
+            diff = utils.mb_to_frame(mblock);
+            image_current = image_prev + diff;
+            images{end+1} = image_current;
         end
-        mblocks{end+1} = mblock;
     end
-    close(h2);
+    close(h5);
 
-    % Progress bar for dequantization
+    h6 = waitbar(0, 'Converting images to uint8...');
+    for k = 1:num_images
+        waitbar(k / num_images, h6);
+        images{k} = uint8(images{k});
+    end
+    close(h6);
+end
+
+function mblocks = dequantize_mblocks(mblocks,quantization_matrix)
     h3 = waitbar(0, 'Applying dequantization...');
     for k = 1:length(mblocks)
         waitbar(k / length(mblocks), h3);
@@ -99,8 +81,10 @@ function images = decompress(compressed_data)
         mblocks{k} = mblock;
     end
     close(h3);
+end
 
-    % Progress bar for inverse DCT
+
+function mblocks = apply_idct_to_mblocks(mblocks)
     h4 = waitbar(0, 'Applying inverse DCT...');
     for k = 1:length(mblocks)
         waitbar(k / length(mblocks), h4);
@@ -117,33 +101,4 @@ function images = decompress(compressed_data)
         mblocks{k} = mblock;
     end
     close(h4);
-
-    images = [];
-    num_images = length(mblocks);
-
-    % Progress bar for reconstructing images
-    h5 = waitbar(0, 'Reconstructing images...');
-    for k = 1:num_images
-        waitbar(k / num_images, h5);
-        if mod(k-1, GOP_size) == 0
-            mblock = mblocks{k};
-            image = utils.mb_to_frame(mblock);
-            images{end+1} = image;
-        else
-            mblock = mblocks{k};
-            image_prev = images{k-1};
-            diff = utils.mb_to_frame(mblock);
-            image_current = image_prev + diff;
-            images{end+1} = image_current;
-        end
-    end
-    close(h5);
-
-    % Progress bar for converting images to uint8
-    h6 = waitbar(0, 'Converting images to uint8...');
-    for k = 1:num_images
-        waitbar(k / num_images, h6);
-        images{k} = uint8(images{k});
-    end
-    close(h6);
 end
