@@ -2,7 +2,7 @@ compressed_data = improved_compression.load('result.bin');
 output_folder = 'decompressed';  % folder to save images
 
  
-images = improved_compression.decompress(compressed_data);
+images = improved_compression.fast_decompress(compressed_data,true);
 
 if ~exist(output_folder, 'dir')
     mkdir(output_folder);

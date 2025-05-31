@@ -41,7 +41,7 @@ end
 GOP_size = 30;
 num_B = 3;
 tic;
-compressed_data = improved_compression.compress(images, Q7, GOP_size, num_B, true);
+compressed_data = improved_compression.fast_compress(images, Q3, GOP_size, num_B, true);
 compressed_size = improved_compression.dump('result.bin',compressed_data);
 comp_ratio = double(original_size) / double(compressed_size);
 elapsed_time = toc;

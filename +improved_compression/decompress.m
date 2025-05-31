@@ -1,4 +1,4 @@
-function images = decompress(compressed_data)
+function images = decompress(compressed_data, verbose)
 
     quantization_matrix = double(compressed_data.header.quantization_matrix);
     GOP_size = compressed_data.header.GOP_size;
@@ -21,33 +21,46 @@ function images = decompress(compressed_data)
     
     reconst = cell(C,N);
     
-    h = waitbar(0, 'Decompressing I-Frames... (1/4)');
-    k = 1;
+    if verbose
+        h = waitbar(0, 'Decompressing I-Frames... (1/4)');
+        k = 1;
+    end
+
     for c = 1:C
         decompress = @(mbc) round(idct2(mbc .* quantization_matrix));
         for I_ix = gop_layout.I
             reconst{c,I_ix} = cellfun(decompress, encoded{c,I_ix}, 'UniformOutput', false);
-            waitbar(k/double(length(gop_layout.I)*C), h)
-            k=k+1;
+            if verbose
+                waitbar(k/double(length(gop_layout.I)*C), h)
+                k=k+1;
+            end    
         end
     end
     
-    waitbar(0,h,'Decompressing P-Frames... (2/4)')
-    k = 1;
+    if verbose
+        waitbar(0,h,'Decompressing P-Frames... (2/4)')
+        k = 1;
+    end
+    
+    
     for c = 1:C
         decompress = @(diff, pred) round(idct2(diff .* quantization_matrix))+pred;
         
         for P_ix = gop_layout.P
             prev_ix = anchors(find(anchors < P_ix, 1, 'last'));
             reconst{c,P_ix} = cellfun(decompress, encoded{c,P_ix}, reconst{c, prev_ix}, 'UniformOutput', false);
-            waitbar(k/double(length(gop_layout.P)*C), h)
-            k=k+1;
+            if verbose
+                waitbar(k/double(length(gop_layout.P)*C), h)
+                k=k+1;
+            end
+            
         end
     end
     
-    
-    waitbar(0,h, 'Decompressing B-Frames with temporal alpha... (3/4)');
-    k = 1;
+    if verbose
+        waitbar(0,h, 'Decompressing B-Frames with temporal alpha... (3/4)');
+        k = 1;
+    end
     for c = 1:C
         for B_ix = gop_layout.B
             prev_ix = anchors(find(anchors < B_ix, 1, 'last'));
@@ -65,19 +78,26 @@ function images = decompress(compressed_data)
                 reconst{c, prev_ix}, ...
                 reconst{c, next_ix}, ...
                 'UniformOutput', false);
-    
-            waitbar(k/double(length(gop_layout.B)*C), h)
-            k = k + 1;
+            if verbose
+                waitbar(k/double(length(gop_layout.B)*C), h)
+                k = k + 1;
+            end
         end
     end
     
-    waitbar(0,h, 'Generating uncompressed frames... (4/4)');
+    if verbose
+        waitbar(0,h, 'Generating uncompressed frames... (4/4)');      
+    end
     images = cell(N, 1);
     combine_channels = @(R,G,B) cat(3, R,G,B);
     for k = 1:N
         combined = cellfun(combine_channels, reconst{1,k},reconst{2,k}, reconst{3,k},'UniformOutput', false );
         images{k} = uint8( min(max(utils.mb_to_frame(combined),0),255) );  
-        waitbar(k/N, h)
+        if verbose
+            waitbar(k/N, h)
+        end
     end
-    close(h);
+    if verbose
+        close(h);
+    end
 end
