@@ -1,3 +1,4 @@
+%% setup
 file = fullfile("./video_data", "*.jpg");
 files = dir(file);
 
@@ -16,54 +17,27 @@ quantization_matrix = [
 [~, idx] = sort({files.name});
 files = files(idx);
 
-images = [];
+images = cell(length(files),1);
 original_size = 0;
 for k = 1:length(files)
     filename = files(k).name;
     file = fullfile("./video_data", filename);
-    img = imread(file);
+    img = double(imread(file));
 
-    images{end+1} = img;
+    images{k} = img;
     original_size = original_size +numel(img);
 end
 
+%% Plot PSNR curves
+
 GOP_sizes = [1, 15, 30];
-psnr_results = cell(1, length(GOP_sizes));
+% basic
+psnr_results = psnr_results_basic(GOP_sizes,images,quantization_matrix,original_size);
+colors = ['r', 'g', 'b'];
 
-avg_time = 25; % educated guess
-fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)));
-for g = 1:length(GOP_sizes)  
-    tic;
-    GOP_size = GOP_sizes(g);
-    
-    % Compress and decompress images
-    compressed_data = basic_compression.compress(images, quantization_matrix, GOP_size, true);
-    compressed_size = basic_compression.dump_size(compressed_data);
-    decompressed_images = basic_compression.decompress(compressed_data);
-    
-    % Compute PSNR for each frame
-    psnr_values = zeros(1, length(images));
-    for k = 1:length(images)
-        original_frame = images{k};
-        decompressed_frame = decompressed_images{k};
-        
-        psnr_values(k) = utils.psnr(original_frame, decompressed_frame);
-    end
-    
-    psnr_results{g} = psnr_values;
-
-    elapsed_time = toc;
-    avg_time = (avg_time*(GOP_size-1) + elapsed_time)/GOP_size;
-    
-    
-    fprintf('Time for GOP_size %d: %f seconds\n', GOP_size, elapsed_time);
-    fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)-g));
-end
-
-% Plot PSNR curves
 figure;
 hold on;
-colors = ['r', 'g', 'b']; % Colors for different GOP sizes
+
 for g = 1:length(GOP_sizes)
     plot(1:length(images), psnr_results{g}, colors(g), 'DisplayName', sprintf('GOP Size %d', GOP_sizes(g)));
 end
@@ -76,3 +50,98 @@ legend('show', 'location','best');
 grid on;
 
 saveas(gcf, "assets/psnr_analysis.png")
+
+% improved
+GOP_sizes = [3, 15, 30];
+num_Bs = [1,3,10];
+psnr_results_improved = imroved_algorithm_results([3, 15, 30],[1,3,10],images,quantization_matrix,original_size);
+
+figure;
+hold on;
+for g = 1:length(GOP_sizes)
+    plot(1:length(images), psnr_results_improved{g}, colors(g), 'DisplayName', sprintf('GOP Size %d, Num-B: %d', GOP_sizes(g), num_Bs(g)));
+end
+hold off;
+
+xlabel('Frame Number');
+ylabel('PSNR (dB)');
+title('PSNR Curves for Different GOP Layouts');
+legend('show', 'location','best');
+grid on;
+
+saveas(gcf, "assets/psnr_analysis_improved.png")
+
+
+%% utils
+
+function psnr_results = psnr_results_basic(GOP_sizes,images,quantization_matrix,original_size)
+    psnr_results = cell(1, length(GOP_sizes));
+    
+    avg_time = 25; % educated guess
+    fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)));
+    for g = 1:length(GOP_sizes)  
+        tic;
+        GOP_size = GOP_sizes(g);
+    
+        % Compress and decompress images
+        compressed_data = basic_compression.compress(images, quantization_matrix, GOP_size, true);
+        compressed_size = basic_compression.dump_size(compressed_data);
+        decompressed_images = basic_compression.decompress(compressed_data);
+    
+        % Compute PSNR for each frame
+        psnr_values = zeros(1, length(images));
+        for k = 1:length(images)
+            original_frame = images{k};
+            decompressed_frame = decompressed_images{k};
+    
+            psnr_values(k) = utils.psnr(original_frame, decompressed_frame);
+        end
+    
+        psnr_results{g} = psnr_values;
+    
+        elapsed_time = toc;
+        avg_time = (avg_time*(g-1) + elapsed_time)/length(GOP_sizes);
+    
+    
+        
+        fprintf('Compression ratio = %f', original_size/compressed_size);
+        fprintf('Time for GOP_size %d: %f seconds\n', GOP_size, elapsed_time);
+        fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)-g));
+    end
+end
+
+
+function psnr_results = imroved_algorithm_results(GOP_sizes,num_Bs,images,quantization_matrix,original_size)
+    psnr_results = cell(1, length(GOP_sizes));
+    avg_time = 40; % educated guess
+    fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)));
+    for g = 1:length(GOP_sizes)  
+        tic;
+        GOP_size = GOP_sizes(g);
+        num_B = num_Bs(g);
+    
+        % Compress and decompress images
+        compressed_data = improved_compression.compress(images, quantization_matrix, GOP_size, num_B, true);
+        compressed_size = improved_compression.dump_size(compressed_data);
+        decompressed_images = improved_compression.decompress(compressed_data);
+    
+        % Compute PSNR for each frame
+        psnr_values = zeros(1, length(images));
+        for k = 1:length(images)
+            original_frame = images{k};
+            decompressed_frame = decompressed_images{k};
+    
+            psnr_values(k) = utils.psnr(original_frame, decompressed_frame);
+        end
+    
+        psnr_results{g} = psnr_values;
+    
+        elapsed_time = toc;
+        avg_time = (avg_time*(g-1) + elapsed_time)/length(GOP_sizes);
+    
+    
+        fprintf('Compression ratio = %f', original_size/compressed_size);
+        fprintf('Time for GOP_size %d: num_B: %d %f seconds\n', GOP_size, num_B, elapsed_time);
+        fprintf('Estimated time left: %.0f secs\n', avg_time*(length(GOP_sizes)-g));
+    end
+end
