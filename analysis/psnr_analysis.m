@@ -127,7 +127,7 @@ function psnr_results = psnr_results_basic(GOP_sizes,images,qs,original_size)
         % Compress and decompress images
         compressed_data = basic_compression.compress(images, Q, GOP_size, true);
         compressed_size = basic_compression.dump_size(compressed_data);
-        decompressed_images = basic_compression.decompress(compressed_data);
+        decompressed_images = basic_compression.decompress(compressed_data, true);
     
         % Compute PSNR for each frame
         psnr_values = zeros(1, length(images));

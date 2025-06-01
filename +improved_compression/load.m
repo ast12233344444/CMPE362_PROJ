@@ -5,7 +5,7 @@ function compressed_data = load(fname)
     GOP_size = fread(fid, 1, 'int32');
     num_B = fread(fid, 1, 'int32');
     qsize = fread(fid, 2, 'int32');
-    quantization_matrix = int32(reshape(fread(fid, prod(qsize), 'uint8'), qsize'));
+    quantization_matrix = int32(reshape(fread(fid, prod(qsize), 'int32'), qsize'));
     
     num_images = fread(fid, 1, 'int32');
     image_size = fread(fid, 3, 'int32');

@@ -1,8 +1,10 @@
-compressed_data = improved_compression.load('result.bin');
+input_path = 'result.bin';
+compressed_data = improved_compression.load(input_path);
 output_folder = 'decompressed';  % folder to save images
+verbose = true;
 
  
-images = improved_compression.fast_decompress(compressed_data,true);
+images = improved_compression.fast_decompress(compressed_data,verbose);
 
 if ~exist(output_folder, 'dir')
     mkdir(output_folder);

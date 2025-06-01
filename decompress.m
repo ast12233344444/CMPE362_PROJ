@@ -1,11 +1,11 @@
 set(0, 'DefaultFigureRenderer', 'painters')
 
-fid = fopen('result.bin', 'r');
-
-compressed_data = basic_compression.load('result.bin');
-
-images = basic_compression.decompress(compressed_data);
+input_path = 'result.bin';
 output_folder = 'decompressed';  % folder to save images
+verbose = true;
+
+compressed_data = basic_compression.load(input_path);
+images = basic_compression.decompress(compressed_data, verbose);
 
 % Create the output folder if it doesn't exist
 if ~exist(output_folder, 'dir')

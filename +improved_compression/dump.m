@@ -6,7 +6,7 @@ function compressed_size = dump(fname,compressed_data)
     compressed_size = compressed_size + fwrite(fid, header.GOP_size, 'int32');
     compressed_size = compressed_size + fwrite(fid, header.num_B, 'int32');
     compressed_size = compressed_size + fwrite(fid, size(header.quantization_matrix), 'int32');
-    compressed_size = compressed_size + fwrite(fid, header.quantization_matrix(:), 'uint8');
+    compressed_size = compressed_size + fwrite(fid, header.quantization_matrix(:), 'int32');
 
     compressed_size = compressed_size + fwrite(fid, header.num_images, 'int32');
     compressed_size = compressed_size + fwrite(fid, header.image_size, 'int32');

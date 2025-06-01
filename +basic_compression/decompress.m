@@ -14,6 +14,7 @@
 %               layer_sizes         - Sizes of individual layers (R, G, B).
 %           data:
 %               A matrix containing the compressed image data.
+%      verbose - A boolean flag indicating whether to display progress
 %
 %   Output:
 %       images - A reconstructed image matrix containing the decompressed
@@ -22,49 +23,58 @@
 %       - The function assumes that the input structure is correctly formatted
 %         and contains all necessary fields.
 %       - The quantization matrix is converted to double precision for processing.
-function images = decompress(compressed_data)
+function images = decompress(compressed_data, verbose)
 
     quantization_matrix = double(compressed_data.header.quantization_matrix);
     GOP_size = compressed_data.header.GOP_size;
 
     mblocks = utils.zigzag_rle_decode(compressed_data);
 
-    mblocks = dequantize_mblocks(mblocks,quantization_matrix);
+    mblocks = dequantize_mblocks(mblocks,quantization_matrix, verbose);
+    mblocks = apply_idct_to_mblocks(mblocks, verbose);
+    if verbose
+        h = waitbar(0, 'Reconstructing images...');
+    end
 
-    mblocks = apply_idct_to_mblocks(mblocks);
-
-    images = [];
     num_images = length(mblocks);
+    images = cell(num_images, 1);
 
-    h5 = waitbar(0, 'Reconstructing images...');
     for k = 1:num_images
-        waitbar(k / num_images, h5);
         if mod(k-1, GOP_size) == 0
             mblock = mblocks{k};
             image = utils.mb_to_frame(mblock);
-            images{end+1} = image;
+            images{k} = image;
         else
             mblock = mblocks{k};
             image_prev = images{k-1};
             diff = utils.mb_to_frame(mblock);
             image_current = image_prev + diff;
-            images{end+1} = image_current;
+            images{k} = image_current;
+        end
+        if verbose
+            waitbar(k / num_images, h);
         end
     end
-    close(h5);
 
-    h6 = waitbar(0, 'Converting images to uint8...');
-    for k = 1:num_images
-        waitbar(k / num_images, h6);
-        images{k} = uint8(images{k});
+    if verbose
+        waitbar(0, h, 'Converting images to uint8...');
     end
-    close(h6);
+    for k = 1:num_images
+        images{k} = uint8(images{k});
+        if verbose
+            waitbar(k / num_images, h);
+        end
+    end
+    if verbose
+        close(h);
+    end
 end
 
-function mblocks = dequantize_mblocks(mblocks,quantization_matrix)
-    h3 = waitbar(0, 'Applying dequantization...');
+function mblocks = dequantize_mblocks(mblocks,quantization_matrix, verbose)
+    if verbose
+        h = waitbar(0, 'Applying dequantization...');
+    end
     for k = 1:length(mblocks)
-        waitbar(k / length(mblocks), h3);
         mblock = mblocks{k};
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
@@ -79,15 +89,22 @@ function mblocks = dequantize_mblocks(mblocks,quantization_matrix)
             end
         end
         mblocks{k} = mblock;
+        if verbose
+            waitbar(k / length(mblocks), h);
+        end
     end
-    close(h3);
+
+    if verbose
+        close(h)
+    end
 end
 
 
-function mblocks = apply_idct_to_mblocks(mblocks)
-    h4 = waitbar(0, 'Applying inverse DCT...');
+function mblocks = apply_idct_to_mblocks(mblocks, verbose)
+    if verbose
+        h = waitbar(0, 'Applying inverse DCT...');
+    end
     for k = 1:length(mblocks)
-        waitbar(k / length(mblocks), h4);
         mblock = mblocks{k};
         for i = 1:size(mblock, 1)
             for j = 1:size(mblock, 2)
@@ -99,6 +116,11 @@ function mblocks = apply_idct_to_mblocks(mblocks)
             end
         end
         mblocks{k} = mblock;
+        if verbose
+            waitbar(k / length(mblocks), h);
+        end
     end
-    close(h4);
+    if verbose
+        close(h)
+    end
 end

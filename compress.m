@@ -15,6 +15,7 @@ quantization_matrix = [
 ];
 
 GOP_size = 30;
+verbose = true;
 
 
 %Sort filenames alphabetically
@@ -35,7 +36,7 @@ for k = 1:length(files)
 end
 
 tic;
-compressed_data = basic_compression.compress(images, quantization_matrix, GOP_size,true);
+compressed_data = basic_compression.compress(images, quantization_matrix, GOP_size,verbose);
 compressed_size = basic_compression.dump('result.bin',compressed_data);
 comp_ratio = double(original_size) / double(compressed_size);
 elapsed_time = toc;
