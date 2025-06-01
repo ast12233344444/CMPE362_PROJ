@@ -1,3 +1,36 @@
+% Compresses a sequence of images using DCT-based compression with GOP structure.
+
+% INPUTS:
+% images               - Cell array of input images (RGB format).
+% quantization_matrix  - Matrix used for quantization during compression.
+% GOP_size             - Number of frames in each GOP.
+% num_B                - Number of B-frames per GOP.
+% verbose              - Boolean flag for progress visualization.
+
+% OUTPUT:
+% compressed_data      - Struct containing compressed data and metadata.
+
+% EXPECTED STRUCT FORMAT FOR compressed_data:
+% compressed_data.header:
+%   - GOP_size: Integer, size of Group of Pictures.
+%   - num_B: Integer, number of B-frames per GOP.
+%   - quantization_matrix: Matrix used for quantization.
+%   - num_images: Integer, total number of images.
+%   - image_size: Array [height, width, channels].
+%   - layer_sizes: Array of integers, sizes of compressed layers.
+%
+% compressed_data.data:
+%   - Array of encoded macroblock data (R, G, B layers).
+
+% WHY fast_compress:
+% This function uses vectorized operations to optimize compression speed, reducing computational overhead compared to traditional iterative methods.
+
+% NOTES ON VECTORIZATION PROCESS:
+% - DCT and inverse DCT are applied using matrix multiplications (`tensorprod`) for efficient block-wise transformations.
+% - `blockproc` is used for block-wise processing of images, avoiding explicit loops over blocks.
+% - Temporal prediction for P-frames and B-frames is calculated using matrix operations instead of pixel-wise iteration.
+% - `cellfun` is used for batch processing of macroblocks during encoding.
+% These techniques significantly improve performance for large image sequences.
 function [compressed_data] = fast_compress(images, quantization_matrix, GOP_size, num_B, verbose)
     N = length(images);
 

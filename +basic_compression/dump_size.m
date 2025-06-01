@@ -1,3 +1,25 @@
+% Computes the total size of compressed data without writing to a file.
+
+% INPUT:
+% compressed_data - Struct containing compressed data and metadata.
+
+% OUTPUT:
+% compressed_size - Total size of the compressed data (in bytes).
+
+% EXPECTED STRUCT FORMAT FOR compressed_data:
+% compressed_data.header:
+%   - GOP_size: Integer, size of Group of Pictures.
+%   - quantization_matrix: Matrix used for quantization.
+%   - num_images: Integer, total number of images.
+%   - image_size: Array [height, width, channels].
+%   - layer_sizes: Array of integers, sizes of compressed layers.
+%
+% compressed_data.data:
+%   - Array of int8, compressed macroblock data.
+
+% FUNCTION PURPOSE:
+% This is a dry version of dump.m, used to calculate the size of compressed data 
+% without performing file I/O operations.
 function compressed_size = dump_size(compressed_data)
     header = compressed_data.header;
     compressed_size = 0;

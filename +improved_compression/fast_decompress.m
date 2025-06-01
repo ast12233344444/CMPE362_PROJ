@@ -1,3 +1,24 @@
+% Decompresses DCT-based compressed data into a sequence of images using a fast, vectorized approach.
+
+% INPUTS:
+% compressed_data - Struct containing compressed data and metadata.
+% verbose         - Boolean flag for progress visualization.
+
+% OUTPUT:
+% images          - Cell array of decompressed images (uint8 format).
+
+% EXPECTED STRUCT FORMAT FOR compressed_data:
+% compressed_data.header:
+%   - quantization_matrix: Matrix used for dequantization.
+%   - GOP_size: Integer, size of Group of Pictures.
+%   - num_B: Integer, number of B-frames per GOP.
+%   - num_images: Integer, total number of images.
+%
+% compressed_data.data:
+%   - Encoded macroblock data (cell array of matrices).
+
+% WHY fast_decompress:
+% This function is a vectorized version of decompress.m, optimized for performance by minimizing loops and leveraging MATLAB's efficient matrix operations.
 function images = fast_decompress(compressed_data, verbose)
 
     quantization_matrix = double(compressed_data.header.quantization_matrix);

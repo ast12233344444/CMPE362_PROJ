@@ -1,3 +1,24 @@
+% Function to decompress a sequence of images from DCT-based compressed data.
+
+% INPUTS:
+% compressed_data - Struct containing compressed data and metadata.
+% verbose         - Boolean flag for progress visualization.
+
+% OUTPUT:
+% images          - Cell array of decompressed images (RGB format).
+
+% PROCESS:
+% 1. Decode macroblocks using zigzag RLE.
+% 2. Generate GOP layout (I, P, B frames).
+% 3. Decompress I-frames using inverse DCT and dequantization.
+% 4. Decompress P-frames using motion prediction from previous anchor frames.
+% 5. Decompress B-frames using bidirectional motion prediction with temporal weighting.
+% 6. Combine channels and reconstruct full images.
+
+% NOTE:
+% - Utilizes helper functions from `utils` for macroblock decoding, GOP layout generation, 
+%   and frame reconstruction.
+% - Verbose mode provides a progress bar for each decompression stage.
 function images = decompress(compressed_data, verbose)
 
     quantization_matrix = double(compressed_data.header.quantization_matrix);

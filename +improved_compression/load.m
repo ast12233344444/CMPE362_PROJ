@@ -1,3 +1,28 @@
+% Reads compressed data from a binary file and reconstructs its structure.
+
+% INPUT:
+% fname - Name of the input binary file.
+
+% OUTPUT:
+% compressed_data - Struct containing compressed data and metadata.
+
+% EXPECTED STRUCT FORMAT FOR compressed_data:
+% compressed_data.header:
+%   - GOP_size: Integer, size of Group of Pictures.
+%   - num_B: Integer, number of B-frames per GOP.
+%   - quantization_matrix: Matrix used for quantization.
+%   - num_images: Integer, total number of images.
+%   - image_size: Array [width, height, channels].
+%   - layer_sizes: Array of integers, sizes of compressed layers.
+%
+% compressed_data.data:
+%   - Array of int8, compressed macroblock data.
+
+% PROCESS:
+% 1. Read header information (GOP size, number of B-frames, quantization matrix, etc.).
+% 2. Read image metadata (number of images, image size, layer sizes).
+% 3. Read compressed data and reshape it based on metadata.
+% 4. Return the reconstructed struct.
 function compressed_data = load(fname)
     fid = fopen(fname, 'r');
     

@@ -1,3 +1,29 @@
+% Function to compress a sequence of images using DCT-based compression with 
+% Group of Pictures (GOP) structure. Supports I-frames, P-frames, and B-frames.
+
+% INPUTS:
+% images               - Cell array of input images (RGB format).
+% quantization_matrix  - Matrix used for quantization during compression.
+% GOP_size             - Number of frames in each GOP.
+% num_B                - Number of B-frames per GOP.
+% verbose              - Boolean flag for progress visualization.
+
+% OUTPUT:
+% compressed_data      - Struct containing compressed data and metadata.
+
+% PROCESS:
+% 1. Convert images to macroblocks.
+% 2. Generate GOP layout (I, P, B frames).
+% 3. Compress I-frames using DCT and quantization.
+% 4. Compress P-frames using motion prediction from previous anchor frames.
+% 5. Compress B-frames using bidirectional motion prediction.
+% 6. Reconstruct frames for visualization and encode macroblocks using zigzag RLE.
+% 7. Return compressed data with metadata.
+
+% NOTE:
+% - Utilizes helper functions from `utils` for macroblock conversion, GOP layout generation, 
+%   and zigzag RLE encoding.
+% - Verbose mode provides a progress bar for each compression stage.
 function [compressed_data] = compress(images, quantization_matrix, GOP_size, num_B, verbose)
     N = length(images);
     mblocks_ = cell(N,1);
