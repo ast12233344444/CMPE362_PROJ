@@ -1,5 +1,9 @@
 # CMPE362: Simplified Video Compression with DCT and Predictive Coding
 
+# Contributers
+- Yusuf AKIN, 2021400288 
+- Ahmet Salih TURKEL, 2021400120
+
 ## Contents
 
 ```
